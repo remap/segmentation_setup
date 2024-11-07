@@ -1,3 +1,9 @@
-[submodule "Detic"]\n\turl = https://github.com/facebookresearch/detic.git\n
-[submodule "Detic/third_party/CenterNet2"]\n\turl = https://github.com/youngwanLEE/CenterNet2.git\n
-[submodule "Detic/third_party/Deformable-DETR"]\n\turl = https://github.com/fundamentalvision/Deformable-DETR.git\n
+[submodule "Detic"]
+	path = Detic
+	url = https://github.com/facebookresearch/detic.git
+[submodule "Detic/third_party/CenterNet2"]
+	path = Detic/third_party/CenterNet2
+	url = https://github.com/youngwanLEE/CenterNet2.git
+[submodule "Detic/third_party/Deformable-DETR"]
+	path = Detic/third_party/Deformable-DETR
+	url = https://github.com/fundamentalvision/Deformable-DETR.git
