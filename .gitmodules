@@ -1,0 +1,3 @@
+[submodule "Detic"]\n\turl = https://github.com/facebookresearch/detic.git\n
+[submodule "Detic/third_party/CenterNet2"]\n\turl = https://github.com/youngwanLEE/CenterNet2.git\n
+[submodule "Detic/third_party/Deformable-DETR"]\n\turl = https://github.com/fundamentalvision/Deformable-DETR.git\n
