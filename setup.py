@@ -1,8 +1,22 @@
 # setup
+import argparse
+
 from PIL import Image
 from icecream import ic
 from IPython.display import display, Image as IPImage
-from pathlib import Path
+
+
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Script for setting up detectron2 model with Detic.")
+parser.add_argument("--vocabulary", type=str, default="lvis", help="Vocabulary to use: lvis, objects365, openimages, or coco")
+parser.add_argument("--device", type=str, default="cuda", help="Device to use: cuda or cpu")
+parser.add_argument("--seg", type=str, default="instance", help="Segmentation type: instance or panoptic")
+args = parser.parse_args()
+
+# Print argument values for confirmation
+ic(args.vocabulary, args.device, args.seg)
+
+# ========================
 
 current_dir = str(Path(__file__).parent)+'/'
 
@@ -49,14 +63,22 @@ folder_path = current_dir+'Detic/'
 
 # Build the detector and download our pretrained weights
 cfg = get_cfg()
-add_centernet_config(cfg)
-add_detic_config(cfg)
-cfg.merge_from_file(folder_path+"configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
-cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
+if args.seg == 'panoptic':
+    cfg.merge_from_file(model_zoo.get_config_file("COCO-PanopticSegmentation/panoptic_fpn_R_101_3x.yaml"))
+    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-PanopticSegmentation/panoptic_fpn_R_101_3x.yaml")
+else:
+    add_centernet_config(cfg)
+    add_detic_config(cfg)
+    cfg.merge_from_file(folder_path+"configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml")
+    cfg.MODEL.WEIGHTS = 'https://dl.fbaipublicfiles.com/detic/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth'
+
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
 cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand'
 cfg.MODEL.ROI_HEADS.ONE_CLASS_PER_PROPOSAL = True # For better visualization purpose. Set to False for all classes.
-# cfg.MODEL.DEVICE='cpu' # uncomment this to use cpu-only mode.
+
+if args.device == 'cpu':
+    cfg.MODEL.DEVICE='cpu' # uncomment this to use cpu-only mode.
+
 predictor = DefaultPredictor(cfg)
 
 ic('done 2')
@@ -77,7 +99,8 @@ BUILDIN_METADATA_PATH = {
     'coco': 'coco_2017_val',
 }
 
-vocabulary = 'lvis' # change to 'lvis', 'objects365', 'openimages', or 'coco'
+# vocabulary = 'lvis' # change to 'lvis', 'objects365', 'openimages', or 'coco'
+vocabulary = args.vocabulary if args.vocabulary in BUILDIN_CLASSIFIER else 'lvis'
 metadata = MetadataCatalog.get(BUILDIN_METADATA_PATH[vocabulary])
 classifier = BUILDIN_CLASSIFIER[vocabulary]
 num_classes = len(metadata.thing_classes)
