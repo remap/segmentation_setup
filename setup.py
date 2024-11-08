@@ -2,6 +2,9 @@
 from PIL import Image
 from icecream import ic
 from IPython.display import display, Image as IPImage
+from pathlib import Path
+
+current_dir = str(Path(__file__).parent)+'/'
 
 # Install detectron2
 import torch
@@ -42,7 +45,7 @@ from Detic.detic.modeling.utils import reset_cls_test
 
 ic('done here')
 
-folder_path = '/content/Detic/'
+folder_path = current_dir+'Detic/'
 
 # Build the detector and download our pretrained weights
 cfg = get_cfg()
