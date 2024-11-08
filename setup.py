@@ -34,11 +34,11 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 
 # Detic libraries
-sys.path.insert(0, '/content/Detic/')
-sys.path.insert(0, '/content/Detic/datasets/')
-sys.path.insert(0, '/content/Detic/detic')
-sys.path.insert(0, '/content/Detic/detic/modeling/utils')
-sys.path.insert(0, '/content/Detic/third_party/CenterNet2/')
+sys.path.insert(0, current_dir+'Detic/')
+sys.path.insert(0, current_dir+'Detic/datasets/')
+sys.path.insert(0, current_dir+'Detic/detic')
+sys.path.insert(0, current_dir+'Detic/detic/modeling/utils')
+sys.path.insert(0, current_dir+'Detic/third_party/CenterNet2/')
 from centernet.config import add_centernet_config
 from Detic.detic.config import add_detic_config
 from Detic.detic.modeling.utils import reset_cls_test
