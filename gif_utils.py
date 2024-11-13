@@ -1,4 +1,5 @@
 from IPython.display import display, Image as IPImage
+import cv2
 
 def save_frames_to_gif(gif_path, frames, frame_duration=40):
     frames[0].save(gif_path, 
@@ -28,7 +29,7 @@ def extract_video_frames(video_path):
         ret, frame = cap.read()
         if not ret:
             break
-    frames.append(frame)
+        frames.append(frame)
 
     cap.release()
     return frames

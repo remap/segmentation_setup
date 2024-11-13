@@ -4,7 +4,7 @@ import argparse
 from PIL import Image
 from icecream import ic
 from IPython.display import display, Image as IPImage
-
+from pathlib import Path
 
 # Set up argument parser
 parser = argparse.ArgumentParser(description="Script for setting up detectron2 model with Detic.")
