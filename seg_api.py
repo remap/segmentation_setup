@@ -11,6 +11,7 @@ importlib.reload(gif_utils)
 from icecream import ic
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
+import torch
 
 class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
@@ -110,7 +111,17 @@ class Segmentor:
             masked_frames.append(Image.fromarray(masked_frame.get_image()))
             frames_preds.append((k, preds))
             if self.panoptic:
-                mask_data.append((k, preds[0].pred_masks)) # extract segmentation masks from panoptic predictor
+                # extract segmentation masks from panoptic predictor
+                # Create a mask tensor with the same spatial dimensions as preds[0]
+                frame_pan_mask = (preds[0].unsqueeze(0) == torch.arange(len(preds[1]), device=preds[0].device).view(-1, 1, 1)).to(torch.bool)
+                # the line above does the same thing as:
+                # frame_pan_mask = preds[0].new_zeros((len(preds[1]), preds[0].shape[0], preds[0].shape[1]), dtype=torch.bool)
+                # for i in range(len(preds[1])):
+                #     # create mask from panoptic predictor
+                #     frame_pan_mask[i] = preds[0] == i
+
+                # Append the result to mask_data
+                mask_data.append((k, frame_pan_mask))
             else:    
                 mask_data.append((k, preds.pred_masks))
 
