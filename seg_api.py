@@ -62,12 +62,12 @@ class Segmenter:
 
 
     # def get_video_masks(predictor, Visualizer, metadata, frames=None, video=None, segmentation_type='instance'):
-    def get_video_masks(self, frames=None, video=None):
+    def get_video_masks(self, frames=None, video_path=None):
 
         # assert that not both frames and video are None
-        assert not (frames is None and video is None), "Either frames or video must be provided"
-        if video is not None:
-            frames = gif_utils.extract_video_frames(video)
+        assert not (frames is None and video_path is None), "Either frames or video must be provided"
+        if video_path is not None:
+            frames = gif_utils.extract_video_frames(video_path)
 
         # Process video to get masks
         mask_data = []
