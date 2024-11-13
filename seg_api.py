@@ -186,3 +186,79 @@ class Segmentor:
         frames_preds = list(frames_preds_queue.queue)
         mask_data = list(mask_data_queue.queue)
         return masked_frames, frames_preds, mask_data
+
+
+class MaskObject:
+    def __init__(self, frames, mask_data, frames_preds):
+        self.mask_data = mask_data
+        self.frame_preds = frames_preds
+        self.frames = frames
+
+        self.mask_objects = self.create_mask_objects() # create masks images
+
+        self.mask_data_dict = {}
+        for k in range(len(frames_preds)):
+            self.mask_data_dict[k] = {
+                "masks": mask_data[k][1],
+                "bboxes": frames_preds[k][1].pred_boxes if hasattr(frames_preds[k][1], 'pred_boxes') else None,
+                "mask_objects": self.mask_objects[k], # masks images
+            }
+        
+    def create_mask_objects(self):
+        mask_objects = []
+        for k, frame in enumerate(self.frames):
+            mask_objects.append(self.get_mask_objects(frame, frame_num=k))
+        return mask_objects
+
+    def get_mask_objects(self, frame=None, masks=None, frame_num=None):
+        """
+        Apply multiple masks on the frame simultaneously, returning a 4D tensor of masked images.
+
+        Args:
+        - masks (torch.Tensor): 3D tensor of shape (num_masks, height, width), where each 2D slice is a binary mask.
+        - frame (torch.Tensor): 3D tensor of shape (height, width, channels), representing the original image.
+
+        Returns:
+        - masked_images (torch.Tensor): 4D tensor of shape (num_masks, height, width, channels), where each slice along
+                                        the first dimension is the masked image for the corresponding mask.
+        """
+        if frame is None:
+            assert frame_num is not None, "Either frame or frame_num must be provided"
+            frame = self.frames[frame_num]
+        # Ensure frame is a tensor
+        frame = torch.tensor(frame).to(torch.float32) if not isinstance(frame, torch.Tensor) else frame
+
+        if masks is None:
+            assert frame_num is not None, "Either masks or frame_num must be provided"
+            masks = self.mask_data[frame_num][1]
+
+        # Ensure masks are binary (0 or 1)
+        binary_masks = torch.where(masks == 1, 1, 0).unsqueeze(-1).cpu()  # Shape: (num_masks, height, width, 1)
+
+        # Expand frame to match the mask dimensions for broadcasting
+        frame_expanded = frame.unsqueeze(0)  # Shape: (1, height, width, channels)
+
+        # Apply masks to the frame
+        masked_images = binary_masks * frame_expanded  # Shape: (num_masks, height, width, channels)
+
+        return masked_images
+    
+    def get_mask_from_point_location(self, frame_number, x, y):
+
+        # Retrieve all masks for the frame
+        masks_info = zip(
+                self.mask_data_dict[frame_number]['masks'],
+                self.mask_data_dict[frame_number]['bboxes'],
+                self.mask_data_dict[frame_number]['mask_objects']
+            )
+
+        for k, (mask, bbox, mask_obj) in enumerate(masks_info):
+            if bbox is not None:
+                x_min, y_min, x_max, y_max = bbox#.tensor[0]
+                # Check if point is within bounding box
+                if not(x_min <= x <= x_max and y_min <= y <= y_max):
+                    continue
+            if mask[int(y), int(x)] == 1:
+                return mask, mask_obj, bbox, k
+
+        return None  # No mask found containing the point
