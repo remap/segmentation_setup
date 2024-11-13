@@ -10,3 +10,25 @@ def save_frames_to_gif(gif_path, frames, frame_duration=40):
   
 def show_gif(gif_path):
     display(IPImage(filename=gif_path))
+
+
+def extract_video_frames(video_path):
+    """
+    Extracts frames from a given video file.
+
+    Args:
+        video (str): Path to the video file.
+
+    Returns:
+        list: A list containing the frames extracted from the video.
+    """
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+    frames.append(frame)
+
+    cap.release()
+    return frames
