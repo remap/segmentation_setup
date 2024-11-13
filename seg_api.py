@@ -13,17 +13,24 @@ from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 
 class Segmentor:
-    def __init__(self, predictor, cfg, metadata=None, panoptic=False) -> None:
+    def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
         self.predictor = predictor
         self.cfg = cfg
         if (metadata is None) or panoptic:
             self.metadata = MetadataCatalog
         else:
             self.metadata = metadata
+            self.num_classes = len(metadata.thing_classes)
+
         self.instance_metadata = deepcopy(metadata)
         self.panoptic = panoptic
+        self.classifier = classifier
+        self.vocabulary = vocabulary
 
-    def reset_segmentation_type(self, segmentation_type='instance'):
+    def reset_segmentation_type(self, segmentation_type='instance',
+                                classifier=None,
+                                vocabulary=None,
+                                metadata=None):
         if segmentation_type == 'panoptic':
             self.panoptic = True
             self.metadata = MetadataCatalog
@@ -31,7 +38,19 @@ class Segmentor:
             self.panoptic = False
             self.metadata = deepcopy(self.instance_metadata)
 
-        self.predictor, self.cfg = setup_utils.reset_predictor(self.cfg, segmentation_type=segmentation_type)
+        if metadata is not None:
+          self.metadata = metadata
+          self.num_classes = len(metadata.thing_classes)
+
+        if vocabulary is not None:
+          self.vocabulary = vocabulary
+
+        if classifier is not None:
+          self.classifier = classifier
+        #   TODO: else build a new classifier based on CLIP and classes in metadata.thing_classes
+
+        self.predictor, self.cfg = setup_utils.reset_predictor(self.cfg, segmentation_type=segmentation_type,
+                                                                classifier=classifier, num_classes=self.num_classes)
 
 
     # def visualize_segmentation(predictor, Visualizer, metadata, im, panoptic=False, show_image=True):
@@ -85,7 +104,6 @@ class Segmentor:
         frames_preds = []
         masked_frames = []
 
-        # TODO: implement multi-threading
         for k,frame in enumerate(frames):
             preds, masked_frame = self.visualize_segmentation(frame, show_image=False)
 

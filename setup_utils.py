@@ -49,7 +49,7 @@ def reset_cfg(cfg=None, segmentation_type='instance'):
 
     return cfg
 
-def reset_predictor(cfg=None, segmentation_type='instance'):
+def reset_predictor(cfg=None, segmentation_type='instance', classifier=None, num_classes=None):
     
     """
     Resets and returns a DefaultPredictor object based on the given configuration and segmentation type.
@@ -63,5 +63,9 @@ def reset_predictor(cfg=None, segmentation_type='instance'):
     """
     cfg = reset_cfg(segmentation_type=segmentation_type)
     predictor = DefaultPredictor(cfg)
+    
+    if segmentation_type != 'panoptic':
+        assert classifier is not None and num_classes is not None
+        reset_cls_test(predictor.model, classifier, num_classes)
     
     return predictor, cfg
