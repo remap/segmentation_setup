@@ -12,7 +12,7 @@ from icecream import ic
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 
-class Segmenter:
+class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False) -> None:
         self.predictor = predictor
         self.cfg = cfg
