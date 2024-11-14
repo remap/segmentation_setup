@@ -78,7 +78,7 @@ def extract_video_frames(video_path, save_to_png=False, output_dir=None):
     return frames
 
 
-def save_binary_mask_as_png(mask, output_path):
+def save_binary_mask_as_png(mask, output_path, mask_name, print_flag=True):
     """
     Saves a binary mask as a PNG image.
 
@@ -109,13 +109,14 @@ def save_binary_mask_as_png(mask, output_path):
     output_file = os.path.join(output_path, mask_name)
     success = cv2.imwrite(output_file, mask_scaled)
     
-    if success:
-        print(f"Binary mask saved successfully as {output_file}")
-    else:
-        print(f"Failed to save binary mask as {output_file}")
+    if print_flag:
+        if success:
+            print(f"Binary mask saved successfully as {output_file}")
+        else:
+            print(f"Failed to save binary mask as {output_file}")
 
 
-def save_frame_as_png(frame, output_path, frame_name):
+def save_frame_as_png(frame, output_path, frame_name, print_flag=True):
     """
     Saves a frame as a PNG image.
 
@@ -133,10 +134,11 @@ def save_frame_as_png(frame, output_path, frame_name):
     output_file = os.path.join(output_path, frame_name)
     success = cv2.imwrite(output_file, frame)
 
-    if success:
-        print(f"Frame saved successfully as {output_file}")
-    else:
-        print(f"Failed to save frame as {output_file}")
+    if print_flag:
+        if success:
+            print(f"Frame saved successfully as {output_file}")
+        else:
+            print(f"Failed to save frame as {output_file}")
 
 
 

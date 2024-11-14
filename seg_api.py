@@ -13,6 +13,8 @@ from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 import torch
 import math
+import os
+from pathlib import Path
 
 class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
@@ -111,28 +113,43 @@ class Segmentor:
         return preds, viz_out
 
 
-    def get_video_masks(self, frames=None, video_path=None):
+    def get_video_masks(self, frames=None, video_path=None, save_frames_to_png=False, save_masks_to_png=False):
         """
-        Generate segmentation masks for video frames.
+        Applies the segmentation model to a video or a list of frames, and returns the results as three lists.
 
         Args:
-            frames (list, optional): A list of video frames. If None, `video_path` must be provided.
-            video_path (str, optional): Path to the video file. If provided, frames will be extracted from the video.
+            frames (list, optional): A list of frames to process. Either frames or video must be provided.
+            video_path (str, optional): The path to a video file. Either frames or video must be provided.
+            save_frames_to_png (bool, optional): If True, saves each frame as a PNG to the same directory as the video file. Defaults to False.
+            save_masks_to_png (bool, optional): If True, saves each mask as a PNG to a directory named after the video file without extension, e.g. "video_masks". Defaults to False.
 
         Returns:
-            tuple: A tuple containing:
-                - masked_frames (list): List of PIL Image objects with the segmentation masks applied.
-                - frames_preds (list): List of tuples, each containing the frame index and its corresponding predictions.
-                - mask_data (list): List of tuples, each containing the frame index and its corresponding mask data 
-                (either panoptic or instance segmentation masks).
-
-        Raises:
-            AssertionError: If both `frames` and `video_path` are None.
+            tuple: A tuple containing the lists of masked frames, frame index and predictions tuples, and frame index and mask data tuples.
         """
         # assert that not both frames and video are None
         assert not (frames is None and video_path is None), "Either frames or video must be provided"
-        if video_path is not None:
-            frames = gif_utils.extract_video_frames(video_path)
+
+        if video_path is not None and frames is None:
+            frames = gif_utils.extract_video_frames(video_path, save_to_png=save_frames_to_png)
+        elif frames is not None and save_frames_to_png:
+            if video_path is None:
+                frames_video_path = os.path.join(os.path.dirname(Path(__file__).parent.parent), 'video_frames')
+            else:
+                frames_video_path = os.path.join(os.path.dirname(video_path), f"{Path(video_path).stem}_frames")
+            os.makedirs(frames_video_path, exist_ok=True)
+            for frame_count, frame in enumerate(frames):
+                gif_utils.save_frame_as_png(frame, frames_video_path, f'frame_{frame_count:05d}.png', print_flag=False)
+
+        if save_masks_to_png:
+            # Get the video filename without extension
+            if video_path is None:
+                video_path = Path(__file__).parent.parent
+                video_filename = 'video'
+            else:
+                video_filename = Path(video_path).stem
+            masks_dir = os.path.join(os.path.dirname(video_path), f"{video_filename}_masks")
+            # Ensure output directory exists
+            os.makedirs(masks_dir, exist_ok=True)
 
         # Process video to get masks
         mask_data = []
@@ -158,6 +175,16 @@ class Segmentor:
                 mask_data.append((k, frame_pan_mask))
             else:    
                 mask_data.append((k, preds.pred_masks))
+
+            if save_masks_to_png:
+                frame_masks_dir = os.path.join(masks_dir, f'frame_{k}')
+                os.makedirs(frame_masks_dir, exist_ok=True)
+                for mask_count, mask in enumerate(mask_data[-1][1]):
+                    gif_utils.save_binary_mask_as_png(mask, 
+                                                      frame_masks_dir, 
+                                                      f'mask_{mask_count:05d}.png', 
+                                                      print_flag=False)
+                    # cv2.imwrite(os.path.join(frame_masks_dir, f'mask_{mask_count:05d}.png'), mask.to('cpu').numpy())
 
         return masked_frames, frames_preds, mask_data
     
