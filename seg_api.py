@@ -15,6 +15,18 @@ import torch
 
 class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
+        """
+        Initialize the Segmentor object with the given parameters.
+
+        Args:
+            predictor: The predictor object used for segmentation tasks.
+            cfg: The configuration object for the segmentation model.
+            metadata (optional): Metadata object containing information about the dataset. 
+                                If None or if panoptic is True, a default MetadataCatalog is used.
+            panoptic (bool, optional): If True, sets the segmentation mode to panoptic. Defaults to False.
+            classifier (optional): Classifier model for the segmentation task.
+            vocabulary (optional): Vocabulary used for segmentation tasks.
+        """
         self.predictor = predictor
         self.cfg = cfg
         if (metadata is None) or panoptic:
@@ -32,6 +44,18 @@ class Segmentor:
                                 classifier=None,
                                 vocabulary=None,
                                 metadata=None):
+        """
+        Resets the segmentation type, classifier, vocabulary, and metadata of the Segmentor object.
+
+        Args:
+            segmentation_type (str, optional): The type of segmentation to use, either 'instance' or 'panoptic'.
+            classifier (optional): Classifier model for the segmentation task. If None, the current classifier is used.
+            vocabulary (optional): Vocabulary used for segmentation tasks. If None, the current vocabulary is used.
+            metadata (optional): Metadata object containing information about the dataset. If None, the current metadata is used.
+
+        Returns:
+            None
+        """
         if segmentation_type == 'panoptic':
             self.panoptic = True
             self.metadata = MetadataCatalog
@@ -54,24 +78,19 @@ class Segmentor:
                                                                 classifier=classifier, num_classes=self.num_classes)
 
 
-    # def visualize_segmentation(predictor, Visualizer, metadata, im, panoptic=False, show_image=True):
     def visualize_segmentation(self, im, show_image=True):
-
         """
-        Visualize segmentation predictions.
+        Visualize the segmentation predictions for an image.
 
         Args:
-            predictor (detectron2.engine.defaults.DefaultPredictor): Predictor object.
-            Visualizer (detectron2.utils.visualizer.Visualizer): Visualizer object.
-            metadata (detectron2.data.catalog.Metadata): Metadata object.
-            im (ndarray): Input image.
-            panoptic (bool): If True, visualizes panoptic segmentation.
-            show_image (bool): If True, shows image with segmentation.
+            im (ndarray): The image to segment.
+            show_image (bool, optional): If True, displays the segmentation mask using OpenCV. Defaults to True.
 
         Returns:
-            predictions (detectron2.structures.instances.Instances): Predictions object.
+            tuple: preds, viz_out
+                preds (Instances): The prediction object containing the segmentation masks.
+                viz_out (VisImage): The visualized image output.
         """
-        
         pred = self.predictor(im)
 
         if self.panoptic:
@@ -91,10 +110,24 @@ class Segmentor:
         return preds, viz_out
 
 
-
-    # def get_video_masks(predictor, Visualizer, metadata, frames=None, video=None, segmentation_type='instance'):
     def get_video_masks(self, frames=None, video_path=None):
+        """
+        Generate segmentation masks for video frames.
 
+        Args:
+            frames (list, optional): A list of video frames. If None, `video_path` must be provided.
+            video_path (str, optional): Path to the video file. If provided, frames will be extracted from the video.
+
+        Returns:
+            tuple: A tuple containing:
+                - masked_frames (list): List of PIL Image objects with the segmentation masks applied.
+                - frames_preds (list): List of tuples, each containing the frame index and its corresponding predictions.
+                - mask_data (list): List of tuples, each containing the frame index and its corresponding mask data 
+                (either panoptic or instance segmentation masks).
+
+        Raises:
+            AssertionError: If both `frames` and `video_path` are None.
+        """
         # assert that not both frames and video are None
         assert not (frames is None and video_path is None), "Either frames or video must be provided"
         if video_path is not None:
@@ -129,6 +162,18 @@ class Segmentor:
     
 
     def video_thread(self, frame_tuple, masked_frames_queue, frames_preds_queue, mask_data_queue):
+        """
+        Processes a single frame from a video, applies the segmentation model, and stores the results in the provided queues.
+
+        Args:
+            frame_tuple (tuple): A tuple containing the frame index and the frame itself.
+            masked_frames_queue (Queue): A queue to store the masked frames.
+            frames_preds_queue (Queue): A queue to store the frame index and predictions tuples.
+            mask_data_queue (Queue): A queue to store the frame index and mask data tuples.
+
+        Returns:
+            None
+        """
         k, frame = frame_tuple
         preds, masked_frame = self.visualize_segmentation(frame, show_image=False)
 
@@ -141,7 +186,18 @@ class Segmentor:
 
 
     def get_video_masks_multithread(self, frames=None, video_path=None, max_workers=10):
+        """
+        Applies the segmentation model to a video or a list of frames, stores the results in three queues,
+        and returns the results as three lists.
 
+        Args:
+            frames (list, optional): A list of frames to process. Either frames or video_path must be provided.
+            video_path (str, optional): The path to a video file. Either frames or video_path must be provided.
+            max_workers (int, optional): The number of threads to use for processing the frames. Defaults to 10.
+
+        Returns:
+            tuple: A tuple containing the lists of masked frames, frame index and predictions tuples, and frame index and mask data tuples.
+        """
         # assert that not both frames and video are None
         assert not (frames is None and video_path is None), "Either frames or video must be provided"
         if video_path is not None:
@@ -190,6 +246,18 @@ class Segmentor:
 
 class MaskObject:
     def __init__(self, frames, mask_data, frames_preds):
+        """
+        Initialize a MaskObject with frames, mask_data, and frames_preds.
+
+        Args:
+            frames (list): A list of frames to process.
+            mask_data (list): A list of tuples, each containing the frame index and its corresponding mask data.
+            frames_preds (list): A list of tuples, each containing the frame index and its corresponding predictions.
+
+        Attributes:
+            mask_objects (list): A list of masks images, created by calling create_mask_objects.
+            mask_data_dict (dict): A dictionary mapping frame indices to their corresponding mask data, bboxes, and mask_objects.
+        """
         self.mask_data = mask_data
         self.frame_preds = frames_preds
         self.frames = frames
@@ -205,6 +273,12 @@ class MaskObject:
             }
         
     def create_mask_objects(self):
+        """
+        Create a list of mask objects by calling get_mask_objects on each frame.
+
+        Returns:
+            list: A list of mask objects, where each element is a 4D tensor of masked images.
+        """
         mask_objects = []
         for k, frame in enumerate(self.frames):
             mask_objects.append(self.get_mask_objects(frame, frame_num=k))
@@ -212,15 +286,15 @@ class MaskObject:
 
     def get_mask_objects(self, frame=None, masks=None, frame_num=None):
         """
-        Apply multiple masks on the frame simultaneously, returning a 4D tensor of masked images.
+        Apply given masks to a frame and return the masked images.
 
         Args:
-        - masks (torch.Tensor): 3D tensor of shape (num_masks, height, width), where each 2D slice is a binary mask.
-        - frame (torch.Tensor): 3D tensor of shape (height, width, channels), representing the original image.
+            frame (Tensor, optional): The frame to apply masks on. If None, `frame_num` must be provided.
+            masks (Tensor, optional): The masks to apply on the frame. If None, `frame_num` must be provided to retrieve masks.
+            frame_num (int, optional): The index of the frame and masks to retrieve if they are not directly provided.
 
         Returns:
-        - masked_images (torch.Tensor): 4D tensor of shape (num_masks, height, width, channels), where each slice along
-                                        the first dimension is the masked image for the corresponding mask.
+            Tensor: A 4D tensor of masked images with shape (num_masks, height, width, channels), where each element is a masked version of the input frame.
         """
         if frame is None:
             assert frame_num is not None, "Either frame or frame_num must be provided"
@@ -244,7 +318,19 @@ class MaskObject:
         return masked_images
     
     def get_mask_from_point_location(self, frame_number, x, y):
+        """
+        Retrieve the mask, mask object, bounding box, and index of the mask 
+        containing a given point (x, y) in the frame specified by frame_number.
 
+        Args:
+            frame_number (int): The index of the frame to search in.
+            x (int): The x coordinate of the point.
+            y (int): The y coordinate of the point.
+
+        Returns:
+            tuple: A tuple containing the mask, mask object, bounding box, and index of the mask
+                if a mask containing the point is found. Otherwise, returns None.
+        """
         # Retrieve all masks for the frame
         masks_info = zip(
                 self.mask_data_dict[frame_number]['masks'],

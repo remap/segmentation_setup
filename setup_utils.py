@@ -50,16 +50,19 @@ def reset_cfg(cfg=None, segmentation_type='instance'):
     return cfg
 
 def reset_predictor(cfg=None, segmentation_type='instance', classifier=None, num_classes=None):
-    
     """
-    Resets and returns a DefaultPredictor object based on the given configuration and segmentation type.
+    Resets and returns a predictor and configuration node based on the given segmentation type.
 
     Args:
         cfg (CfgNode, optional): A detectron2 configuration node. If None, a new configuration will be created.
-        segmentation_type (str): The type of segmentation to use, either 'instance' or 'panoptic'.
+        segmentation_type (str, optional): The type of segmentation to use, either 'instance' or 'panoptic'.
+        classifier (optional): Classifier model for the segmentation task. Required if segmentation_type is not 'panoptic'.
+        num_classes (int, optional): Number of classes for the segmentation task. Required if segmentation_type is not 'panoptic'.
 
     Returns:
-        DefaultPredictor: A predictor object initialized with the specified configuration.
+        tuple: A tuple containing:
+            - predictor (DefaultPredictor): The predictor object initialized with the specified configuration.
+            - cfg (CfgNode): The configuration node used to initialize the predictor.
     """
     cfg = reset_cfg(segmentation_type=segmentation_type)
     predictor = DefaultPredictor(cfg)

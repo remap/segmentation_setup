@@ -2,6 +2,14 @@ from IPython.display import display, Image as IPImage
 import cv2
 
 def save_frames_to_gif(gif_path, frames, frame_duration=40):
+    """
+    Saves a list of frames as a gif to the given path.
+
+    Args:
+        gif_path (str): The path to save the gif to.
+        frames (list): A list of PIL Image objects.
+        frame_duration (int, optional): The duration of each frame in ms. Defaults to 40.
+    """
     frames[0].save(gif_path, 
                    save_all=True, 
                    append_images=frames[1:], 
@@ -10,6 +18,12 @@ def save_frames_to_gif(gif_path, frames, frame_duration=40):
 
   
 def show_gif(gif_path):
+    """
+    Displays a GIF image from a specified file path.
+
+    Args:
+        gif_path (str): The path to the GIF file to be displayed.
+    """
     display(IPImage(filename=gif_path))
 
 
