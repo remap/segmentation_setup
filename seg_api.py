@@ -12,6 +12,7 @@ from icecream import ic
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 import torch
+import math
 
 class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
@@ -64,18 +65,18 @@ class Segmentor:
             self.metadata = deepcopy(self.instance_metadata)
 
         if metadata is not None:
-          self.metadata = metadata
-          self.num_classes = len(metadata.thing_classes)
+            self.metadata = metadata
+            self.num_classes = len(metadata.thing_classes)
 
         if vocabulary is not None:
-          self.vocabulary = vocabulary
+            self.vocabulary = vocabulary
 
         if classifier is not None:
-          self.classifier = classifier
-        #   TODO: else build a new classifier based on CLIP and classes in metadata.thing_classes
+            self.classifier = classifier
+            # TODO: else build a new classifier based on CLIP and classes in metadata.thing_classes
 
         self.predictor, self.cfg = setup_utils.reset_predictor(self.cfg, segmentation_type=segmentation_type,
-                                                                classifier=classifier, num_classes=self.num_classes)
+                                                                classifier=self.classifier, num_classes=self.num_classes)
 
 
     def visualize_segmentation(self, im, show_image=True):
@@ -268,7 +269,7 @@ class MaskObject:
         for k in range(len(frames_preds)):
             self.mask_data_dict[k] = {
                 "masks": mask_data[k][1],
-                "bboxes": frames_preds[k][1].pred_boxes if hasattr(frames_preds[k][1], 'pred_boxes') else None,
+                "bboxes": frames_preds[k][1].pred_boxes if hasattr(frames_preds[k][1], 'pred_boxes') else torch.ones((mask_data[k][1].shape[0],4))*math.nan,
                 "mask_objects": self.mask_objects[k], # masks images
             }
         
@@ -339,7 +340,7 @@ class MaskObject:
             )
 
         for k, (mask, bbox, mask_obj) in enumerate(masks_info):
-            if bbox is not None:
+            if not math.isnan(bbox.max()):
                 x_min, y_min, x_max, y_max = bbox#.tensor[0]
                 # Check if point is within bounding box
                 if not(x_min <= x <= x_max and y_min <= y <= y_max):
