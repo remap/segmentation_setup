@@ -177,7 +177,7 @@ class Segmentor:
                 mask_data.append((k, preds.pred_masks))
 
             if save_masks_to_png:
-                frame_masks_dir = os.path.join(masks_dir, f'frame_{k}')
+                frame_masks_dir = os.path.join(masks_dir, f'frame_{k:05d}')
                 os.makedirs(frame_masks_dir, exist_ok=True)
                 for mask_count, mask in enumerate(mask_data[-1][1]):
                     gif_utils.save_binary_mask_as_png(mask, 
