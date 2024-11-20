@@ -18,7 +18,7 @@ def save_frames_to_gif(gif_path, frames, frame_duration=40):
     frames[0].save(gif_path, 
                    save_all=True, 
                    append_images=frames[1:], 
-                   uration=frame_duration, 
+                   duration=frame_duration, 
                    loop=0)  # duration in ms per frame
 
   
