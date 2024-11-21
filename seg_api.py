@@ -89,16 +89,18 @@ class Segmentor:
 
     def visualize_segmentation(self, im, show_image=True, show_labels=True, show_boxes=True):
         """
-        Visualize the segmentation predictions for an image.
+        Applies the segmentation model to a given image and visualizes the segmentation masks.
 
         Args:
-            im (ndarray): The image to segment.
-            show_image (bool, optional): If True, displays the segmentation mask using OpenCV. Defaults to True.
+            im (np.ndarray): The image to segment.
+            show_image (bool, optional): If True, shows the output image. Defaults to True.
+            show_labels (bool, optional): If True, shows the class labels in the output image. Defaults to True.
+            show_boxes (bool, optional): If True, shows the bounding boxes of the detected objects. Defaults to True.
 
         Returns:
-            tuple: preds, viz_out
-                preds (Instances): The prediction object containing the segmentation masks.
-                viz_out (VisImage): The visualized image output.
+            tuple: A tuple containing:
+                - predictions (dict or Instances): The predictions of the segmentation model.
+                - viz_out (Visualizer): The visualized output image.
         """
         pred = self.predictor(im)
 
@@ -129,6 +131,17 @@ class Segmentor:
         return preds, viz_out
 
     def draw_panoptic_seg_without_labels(self, im, panoptic_seg, segments_info, area_threshold=None, alpha=0.7):
+        """
+        Visualizes the panoptic segmentation output without class labels.
+
+        Args:
+            im (ndarray): The image to visualize.
+            panoptic_seg (ndarray): The panoptic segmentation prediction.
+            segments_info (list[dict]): The list of segment information for each instance.
+
+        Returns:
+            Visualizer: The visualized output image.
+        """
         v = Visualizer(im[:, :, ::-1], self.metadata.get(self.predictor.cfg.DATASETS.TRAIN[0]), scale=1.2)
 
         pred = _PanopticPrediction(panoptic_seg, segments_info, v.metadata)
@@ -180,24 +193,27 @@ class Segmentor:
 
         return v.output
 
-
-
-
     def get_video_masks(self, frames=None, video_path=None, save_frames_to_png=False, save_masks_to_png=False,
                         show_labels=True, show_boxes=True):
+        # assert that not both frames and video are None
         """
-        Applies the segmentation model to a video or a list of frames, and returns the results as three lists.
+        Processes a video or a list of frames using the segmentation model, and optionally saves the frames
+        and masks as PNG files. Returns the masked frames, frame predictions, and mask data.
 
         Args:
-            frames (list, optional): A list of frames to process. Either frames or video must be provided.
-            video_path (str, optional): The path to a video file. Either frames or video must be provided.
-            save_frames_to_png (bool, optional): If True, saves each frame as a PNG to the same directory as the video file. Defaults to False.
-            save_masks_to_png (bool, optional): If True, saves each mask as a PNG to a directory named after the video file without extension, e.g. "video_masks". Defaults to False.
+            frames (list, optional): A list of frames to process. Either frames or video_path must be provided.
+            video_path (str, optional): The path to a video file. Either frames or video_path must be provided.
+            save_frames_to_png (bool, optional): If True, saves each frame as a PNG. Defaults to False.
+            save_masks_to_png (bool, optional): If True, saves each mask as a PNG. Defaults to False.
+            show_labels (bool, optional): If True, includes class labels in the visualization. Defaults to True.
+            show_boxes (bool, optional): If True, includes bounding boxes in the visualization. Defaults to True.
 
         Returns:
-            tuple: A tuple containing the lists of masked frames, frame index and predictions tuples, and frame index and mask data tuples.
+            tuple: A tuple containing three lists:
+                - masked_frames: A list of masked frame images.
+                - frames_preds: A list of tuples, each containing the frame index and its corresponding predictions.
+                - mask_data: A list of tuples, each containing the frame index and its corresponding mask data.
         """
-        # assert that not both frames and video are None
         assert not (frames is None and video_path is None), "Either frames or video must be provided"
 
         if video_path is not None and frames is None:
