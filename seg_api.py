@@ -1,4 +1,4 @@
-from detectron2.utils.visualizer import Visualizer
+from detectron2.utils.visualizer import Visualizer, _PanopticPrediction, ColorMode, _create_text_labels
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from google.colab.patches import cv2_imshow
 import cv2
@@ -15,6 +15,12 @@ import torch
 import math
 import os
 from pathlib import Path
+
+# _SMALL_OBJECT_AREA_THRESH = 1000
+# _LARGE_MASK_AREA_THRESH = 120000
+# _OFF_WHITE = (1.0, 1.0, 240.0 / 255)
+# _BLACK = (0, 0, 0)
+# _RED = (1.0, 0, 0)
 
 class Segmentor:
     def __init__(self, predictor, cfg, metadata=None, panoptic=False, classifier=None, vocabulary=None) -> None:
@@ -81,7 +87,7 @@ class Segmentor:
                                                                 classifier=self.classifier, num_classes=self.num_classes)
 
 
-    def visualize_segmentation(self, im, show_image=True):
+    def visualize_segmentation(self, im, show_image=True, show_labels=True, show_boxes=True):
         """
         Visualize the segmentation predictions for an image.
 
@@ -99,21 +105,86 @@ class Segmentor:
         if self.panoptic:
             preds = pred["panoptic_seg"]
             panoptic_seg, segments_info = preds
-            v = Visualizer(im[:, :, ::-1], self.metadata.get(self.predictor.cfg.DATASETS.TRAIN[0]), scale=1.2)
-            viz_out = v.draw_panoptic_seg_predictions(panoptic_seg.to("cpu"), segments_info)
-
+            if show_labels:
+                v = Visualizer(im[:, :, ::-1], self.metadata.get(self.predictor.cfg.DATASETS.TRAIN[0]), scale=1.2)
+                viz_out = v.draw_panoptic_seg_predictions(panoptic_seg.to("cpu"), segments_info)
+            else:
+                viz_out = self.draw_panoptic_seg_without_labels(im[:,:,::-1], panoptic_seg.to('cpu'), segments_info)
         else:
             preds = pred['instances']
             v = Visualizer(im[:,:,::-1], self.metadata)
-            viz_out = v.draw_instance_predictions(preds.to('cpu'))
+            if show_labels:
+                viz_out = v.draw_instance_predictions(preds.to('cpu'))
+            else:
+                preds_no_labels = deepcopy(preds)
+                del preds_no_labels._fields['scores']
+                del preds_no_labels._fields['pred_classes']
+                if not show_boxes:
+                    del preds_no_labels._fields['pred_boxes']
+                viz_out = v.draw_instance_predictions(preds_no_labels.to('cpu'))
 
         if show_image:
             cv2_imshow(viz_out.get_image()[:, :, ::-1])
 
         return preds, viz_out
 
+    def draw_panoptic_seg_without_labels(self, im, panoptic_seg, segments_info, area_threshold=None, alpha=0.7):
+        v = Visualizer(im[:, :, ::-1], self.metadata.get(self.predictor.cfg.DATASETS.TRAIN[0]), scale=1.2)
 
-    def get_video_masks(self, frames=None, video_path=None, save_frames_to_png=False, save_masks_to_png=False):
+        pred = _PanopticPrediction(panoptic_seg, segments_info, v.metadata)
+        _OFF_WHITE = (1.0, 1.0, 240.0 / 255)
+
+        if v._instance_mode == ColorMode.IMAGE_BW:
+            v.output.reset_image(v._create_grayscale_image(pred.non_empty_mask()))
+
+        # draw mask for all semantic segments first i.e. "stuff"
+        for mask, sinfo in pred.semantic_masks():
+            category_idx = sinfo["category_id"]
+            try:
+                mask_color = [x / 255 for x in v.metadata.stuff_colors[category_idx]]
+            except AttributeError:
+                mask_color = None
+
+            text = v.metadata.stuff_classes[category_idx]
+            v.draw_binary_mask(
+                mask,
+                color=mask_color,
+                edge_color=_OFF_WHITE,
+                # text=text,
+                alpha=alpha,
+                area_threshold=area_threshold,
+            )
+
+        # draw mask for all instances second
+        all_instances = list(pred.instance_masks())
+        if len(all_instances) == 0:
+            return v.output
+        masks, sinfo = list(zip(*all_instances))
+        category_ids = [x["category_id"] for x in sinfo]
+
+        try:
+            scores = [x["score"] for x in sinfo]
+        except KeyError:
+            scores = None
+        labels = None #_create_text_labels(
+            # category_ids, scores, v.metadata.thing_classes, [x.get("iscrowd", 0) for x in sinfo]
+        # )
+
+        try:
+            colors = [
+                v._jitter([x / 255 for x in v.metadata.thing_colors[c]]) for c in category_ids
+            ]
+        except AttributeError:
+            colors = None
+        v.overlay_instances(masks=masks, labels=labels, assigned_colors=colors, alpha=alpha)
+
+        return v.output
+
+
+
+
+    def get_video_masks(self, frames=None, video_path=None, save_frames_to_png=False, save_masks_to_png=False,
+                        show_labels=True, show_boxes=True):
         """
         Applies the segmentation model to a video or a list of frames, and returns the results as three lists.
 
@@ -157,7 +228,8 @@ class Segmentor:
         masked_frames = []
 
         for k,frame in enumerate(frames):
-            preds, masked_frame = self.visualize_segmentation(frame, show_image=False)
+            preds, masked_frame = self.visualize_segmentation(frame, show_image=False,
+                                                            show_labels=show_labels, show_boxes=show_boxes)
 
             masked_frames.append(Image.fromarray(masked_frame.get_image()))
             frames_preds.append((k, preds))

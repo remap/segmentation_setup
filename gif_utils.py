@@ -5,6 +5,8 @@ from pathlib import Path
 from icecream import ic
 import numpy as np
 import torch
+import moviepy.editor as mpy
+from PIL import Image
 
 def save_frames_to_gif(gif_path, frames, frame_duration=40):
     """
@@ -18,9 +20,29 @@ def save_frames_to_gif(gif_path, frames, frame_duration=40):
     frames[0].save(gif_path, 
                    save_all=True, 
                    append_images=frames[1:], 
-                   uration=frame_duration, 
+                   duration=frame_duration, 
                    loop=0)  # duration in ms per frame
 
+def save_frames_to_video(video_path, frames, fps=30):
+    """
+    Saves a list of frames as a video to the given path.
+
+    Args:
+        video_path (str): The path to save the video to.
+        frames (list): A list of PIL Image objects or a 4D tensor of frames with shape (num_frames, height, width, channels).
+        frame_duration (int, optional): The duration of each frame in ms. Defaults to 30.
+    """
+    # if frames are PIL images
+    if isinstance(frames[0], Image.Image):
+        frames_array = []
+        for frame in frames:
+            frames_array.append(np.array(frame))
+    else:
+      frames_tensor = np.stack(frames, axis=0)[..., ::-1]
+      frames_array = [frames_tensor[k] for k in range(frames_tensor.shape[0])]
+
+    clip = mpy.ImageSequenceClip(frames_array, fps=fps)
+    clip.write_videofile(video_path, audio=False)
   
 def show_gif(gif_path):
     """
