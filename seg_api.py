@@ -114,16 +114,18 @@ class Segmentor:
                 viz_out = self.draw_panoptic_seg_without_labels(im[:,:,::-1], panoptic_seg.to('cpu'), segments_info)
         else:
             preds = pred['instances']
+            preds_viz = deepcopy(preds)
+            if not show_boxes:
+                del preds_viz._fields['pred_boxes']
+
             v = Visualizer(im[:,:,::-1], self.metadata)
             if show_labels:
-                viz_out = v.draw_instance_predictions(preds.to('cpu'))
+                viz_out = v.draw_instance_predictions(preds_viz.to('cpu'))
             else:
-                preds_no_labels = deepcopy(preds)
-                del preds_no_labels._fields['scores']
-                del preds_no_labels._fields['pred_classes']
-                if not show_boxes:
-                    del preds_no_labels._fields['pred_boxes']
-                viz_out = v.draw_instance_predictions(preds_no_labels.to('cpu'))
+                del preds_viz._fields['scores']
+                del preds_viz._fields['pred_classes']
+                
+                viz_out = v.draw_instance_predictions(preds_viz.to('cpu'))
 
         if show_image:
             cv2_imshow(viz_out.get_image()[:, :, ::-1])
@@ -252,7 +254,7 @@ class Segmentor:
             if self.panoptic:
                 # extract segmentation masks from panoptic predictor
                 # Create a mask tensor with the same spatial dimensions as preds[0]
-                frame_pan_mask = (preds[0].unsqueeze(0) == torch.arange(len(preds[1]), device=preds[0].device).view(-1, 1, 1)).to(torch.bool)
+                frame_pan_mask = (preds[0].unsqueeze(0) == torch.arange(1,len(preds[1])+1, device=preds[0].device).view(-1, 1, 1)).to(torch.bool)
                 # the line above does the same thing as:
                 # frame_pan_mask = preds[0].new_zeros((len(preds[1]), preds[0].shape[0], preds[0].shape[1]), dtype=torch.bool)
                 # for i in range(len(preds[1])):
