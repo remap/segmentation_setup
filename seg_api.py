@@ -399,7 +399,7 @@ class MaskObject:
         """
         mask_objects = []
         for k, frame in enumerate(self.frames):
-            mask_objects.append(self.get_mask_objects(frame, frame_num=k))
+            mask_objects.append(self.get_mask_objects(frame=frame, frame_num=k))
         return mask_objects
 
     def get_mask_objects(self, frame=None, masks=None, frame_num=None):
@@ -418,22 +418,25 @@ class MaskObject:
             assert frame_num is not None, "Either frame or frame_num must be provided"
             frame = self.frames[frame_num]
         # Ensure frame is a tensor
-        frame = torch.tensor(frame).to(torch.float32) if not isinstance(frame, torch.Tensor) else frame
+        frame = torch.tensor(frame).to(torch.float16) if not isinstance(frame, torch.Tensor) else frame
 
         if masks is None:
             assert frame_num is not None, "Either masks or frame_num must be provided"
             masks = self.mask_data[frame_num][1]
 
-        # Ensure masks are binary (0 or 1)
-        binary_masks = torch.where(masks == 1, 1, 0).unsqueeze(-1).cpu()  # Shape: (num_masks, height, width, 1)
+        def generator():
+            # Ensure masks are binary (0 or 1)
+            binary_masks = torch.where(masks == 1, 1, 0).unsqueeze(-1).cpu()  # Shape: (num_masks, height, width, 1)
 
-        # Expand frame to match the mask dimensions for broadcasting
-        frame_expanded = frame.unsqueeze(0)  # Shape: (1, height, width, channels)
+            # Expand frame to match the mask dimensions for broadcasting
+            frame_expanded = frame.unsqueeze(0)  # Shape: (1, height, width, channels)
 
-        # Apply masks to the frame
-        masked_images = binary_masks * frame_expanded  # Shape: (num_masks, height, width, channels)
+            # Apply masks to the frame
+            masked_images = binary_masks * frame_expanded  # Shape: (num_masks, height, width, channels)
 
-        return masked_images
+            return masked_images
+        
+        return generator
     
     def get_mask_from_point_location(self, frame_number, x, y):
         """
@@ -453,7 +456,7 @@ class MaskObject:
         masks_info = zip(
                 self.mask_data_dict[frame_number]['masks'],
                 self.mask_data_dict[frame_number]['bboxes'],
-                self.mask_data_dict[frame_number]['mask_objects']
+                self.mask_data_dict[frame_number]['mask_objects']()
             )
 
         for k, (mask, bbox, mask_obj) in enumerate(masks_info):
